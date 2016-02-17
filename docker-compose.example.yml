@@ -1,0 +1,52 @@
+mailer:
+  image: namshi/smtp
+  ports:
+    - "25"
+  environment:
+    - SES_USER=root
+    - SES_PASSWORD=hahahahahaa
+    - SES_REGION=us-west-2
+database_data:
+  image: busybox
+  volumes:
+    - '/apps/mssio/database:/var/lib/mysql'
+  command: tail -f /dev/null
+bugzilla_data:
+  image: busybox
+  volumes:
+    - '/apps/mssio/bugzilla:/var/www/bugzilla'
+  command: tail -f /dev/null
+database:
+  image: ionstech/ttbz_db:5.7.9
+  volumes_from:
+    - database_data
+  environment:
+    - "MYSQL_ROOT_PASSWORD=secret"
+app_bugzilla:
+  build: .
+  volumes_from:
+    - bugzilla_data
+  links:
+    - database:mysql
+    - mailer:mail
+  environment:
+    - MSSBZ_APP_SERVER_NAME=bugzilla.mss.io
+    - MSSBZ_APP_DB_NAME=mssio_bugzilla
+    - MSSBZ_APP_DB_USER=root
+    - MSSBZ_APP_DB_PASS=secret
+    - MSSBZ_APP_SECRET_KEY=123456789012345678901234567890123456789012345678901234
+    - MSSBZ_APP_ADMIN_EMAIL=ajensen@mailinator.com
+    - MSSBZ_APP_ADMIN_PASSWORD=rahasia
+    - MSSBZ_APP_ADMIN_REAL_NAME=Adam Jensen
+  ports:
+    - 80
+web:
+  image: mssio/nginx:1.9.11
+  links:
+    - app_bugzilla:app_1
+  environment:
+    - APP_COUNT=1
+    - APP_PORT_1=80
+    - APP_DOMAIN_1=bugzilla.mss.io.dev
+  ports:
+    - 80:80
